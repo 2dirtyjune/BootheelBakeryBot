@@ -178,24 +178,31 @@ async def ship(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"✅ Order #{order['id']} shipped.")
 
 # ===== MAIN =====
-async def main():
-    pool = await connect_db()
-    await setup_tables(pool)
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-    app.bot_data["db_pool"] = pool
-
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("faq", faq))
-    app.add_handler(CommandHandler("mustread", mustread))
-    app.add_handler(CommandHandler("ship", ship))
-
-    print("✅ Bot connected to Neon & running...")
-    await app.run_polling()
-
 if __name__ == "__main__":
-    asyncio.run(main())
+    import asyncio
 
+    async def runner():
+        pool = await connect_db()
+        await setup_tables(pool)
+        app = ApplicationBuilder().token(BOT_TOKEN).build()
+        app.bot_data["db_pool"] = pool
 
+        app.add_handler(CommandHandler("start", start))
+        app.add_handler(CommandHandler("faq", faq))
+        app.add_handler(CommandHandler("mustread", mustread))
+        app.add_handler(CommandHandler("ship", ship))
+
+        print("✅ Bot connected to Neon & running...")
+        # ✅ Correct way: no new event loop, just await polling
+        await app.initialize()
+        await app.start()
+        await app.updater.start_polling()
+        await app.updater.idle()
+
+    try:
+        asyncio.get_event_loop().run_until_complete(runner())
+    except KeyboardInterrupt:
+        print("🛑 Bot stopped manually.")
 
 
 
