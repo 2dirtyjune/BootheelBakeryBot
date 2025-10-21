@@ -611,7 +611,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ORDERS_LOG.append(order_record)
         LAST_ORDER_BY_USER[user.id] = order_record
         PENDING_PAYMENTS[user.id] = order_id
-       await save_order(context.bot_data["db_pool"], order_id, user.id, items, total, addr.copy(), "pending")
+        await save_order(context.bot_data["db_pool"], order_id, user.id, items, total, addr.copy(), "pending")
+
 # === Update daily stats ===
 from datetime import date
 
@@ -800,6 +801,7 @@ if __name__ == "__main__":
         await app.run_polling()
 
     asyncio.run(main())
+
 
 
 
