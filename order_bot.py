@@ -3,6 +3,46 @@ import random
 import string
 import time
 import logging
+import os
+import asyncio
+import asyncpg
+
+# === DATABASE CONFIG ===
+DB_URL = os.getenv("DATABASE_URL", "postgresql://neondb_owner:npg_HwxTk65vqgMW@ep-spring-water-ad4np5eb-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require")
+
+async def connect_db():
+    pool = await asyncpg.create_pool(DB_URL)
+    print("✅ Connected to Neon database")
+    return pool
+
+async def setup_tables(pool):
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                user_id BIGINT PRIMARY KEY,
+                username TEXT,
+                balance NUMERIC DEFAULT 0,
+                cart JSONB DEFAULT '{}'::jsonb
+            );
+        """)
+        print("✅ Tables are ready")
+
+async def save_user(pool, user_id, username, balance=0, cart=None):
+    if cart is None:
+        cart = {}
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO users (user_id, username, balance, cart)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (user_id)
+            DO UPDATE SET username=$2, balance=$3, cart=$4
+        """, user_id, username, balance, cart)
+
+async def load_user(pool, user_id):
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT * FROM users WHERE user_id=$1", user_id)
+        return dict(row) if row else None
+
 from datetime import datetime, date
 try:
     from zoneinfo import ZoneInfo  # Python 3.9+
@@ -30,7 +70,7 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
 # ===== CONFIG =====
-BOT_TOKEN = os.environ.get("BOT_TOKEN", "8296620712:AAHi1s-qM5QARuWQoyq-D6Hua9BbLdkjqnI")
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "8296620712:AAFQhebqqLLcjJgSjEbC9NkxvoT6DncrC7o")
 ADMIN_ID = int(os.environ.get("ADMIN_ID", "2125320923"))
 ORDER_COOLDOWN = 24 * 60 * 60
 HELP_COOLDOWN = 24 * 60 * 60  # 24h cooldown for /requesthelp
@@ -38,7 +78,7 @@ HELP_COOLDOWN = 24 * 60 * 60  # 24h cooldown for /requesthelp
 # ===== MENU =====
 MENU_STRUCTURE = {
     "🖊️": ["Turn", "Jeeter Juice", "Dabwoods", "Crybaby", "Buzzbar"],
-    "🍃": ["8-strain Mix n Match Light dep Smalls"],
+    "🍃": ["1"],
 }
 
 PRODUCT_IMAGES = {
@@ -47,7 +87,7 @@ PRODUCT_IMAGES = {
     "Dabwoods": "https://ibb.co/FkmqZ1d7",
     "Crybaby": "https://ibb.co/zhQdsVJF",
     "Buzzbar": "https://ibb.co/7tcTq6JJ",
-    "8-strain Mix n Match Light dep Smalls": "https://ibb.co/ZtZv3Yy"
+    "1": "https://ibb.co/ZtZv3Yy"
 }
 
 PRODUCT_PRICES = {
@@ -56,7 +96,7 @@ PRODUCT_PRICES = {
     "Dabwoods": {"1x": 40, "50x": 700},
     "Crybaby": {"1x": 35, "50x": 650, "100x": 1100},
     "Buzzbar": {"1x": 35, "50x": 650},
-    "8-strain Mix n Match Light dep Smalls": {"1oz": 100, "1/4LB": 350, "1/2LB": 650, "1LB": 1000, "2LB": 1800, "5 (Free One)": 4000}
+    "1": {"1": 100, "1/4": 350, "1/2": 650, "1": 1000, "2": 1800, "5 (Free One)": 4000}
 }
 
 MENU_IMAGE_URL = "https://ibb.co/JRKtV7Vc"
@@ -682,18 +722,23 @@ async def request_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ Help request sent! The admin will contact you soon.")
 
 
-# ===== RUN BOT =====
-app = ApplicationBuilder().token(BOT_TOKEN).build()
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("admin", admin))
-app.add_handler(CommandHandler("accept", accept_payment))
-app.add_handler(CommandHandler("ship", ship_order))
-app.add_handler(CommandHandler("requesthelp", request_help))
-app.add_handler(CommandHandler("faq", faq))         # NEW
-app.add_handler(CommandHandler("mustread", mustread))   # NEW
-app.add_handler(CallbackQueryHandler(handle_selection))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-
 if __name__ == "__main__":
+    # === Initialize the Neon database ===
+    pool = asyncio.run(connect_db())
+    asyncio.run(setup_tables(pool))
+
+    # === Build and run the bot ===
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("admin", admin))
+    app.add_handler(CommandHandler("accept", accept_payment))
+    app.add_handler(CommandHandler("ship", ship_order))
+    app.add_handler(CommandHandler("requesthelp", request_help))
+    app.add_handler(CommandHandler("faq", faq))
+    app.add_handler(CommandHandler("mustread", mustread))
+    app.add_handler(CallbackQueryHandler(handle_selection))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+
     print("✅ Bot running... Press Ctrl+C to stop.")
     app.run_polling()
