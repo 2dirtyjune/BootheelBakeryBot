@@ -770,31 +770,45 @@ async def request_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # =========================
 # APP ENTRY (PTB v21+)
 # =========================
-async def main():
-    # Connect DB
-    pool = await connect_db()
-    await setup_tables(pool)
-
-    # App
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-    app.bot_data["db_pool"] = pool
-
-    # Handlers
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("admin", admin))
-    app.add_handler(CommandHandler("accept", accept_payment))
-    app.add_handler(CommandHandler("ship", ship_order))
-    app.add_handler(CommandHandler("requesthelp", request_help))
-    app.add_handler(CommandHandler("faq", faq))
-    app.add_handler(CommandHandler("mustread", mustread))
-    app.add_handler(CallbackQueryHandler(handle_selection))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-
-    log.info("✅ Bot connected to DB & starting polling...")
-    await app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    async def main():
+        # ✅ Connect to Neon Postgres
+        pool = await connect_db()
+        await setup_tables(pool)
+
+        # ✅ Initialize Telegram bot
+        app = ApplicationBuilder().token(BOT_TOKEN).build()
+        app.bot_data["db_pool"] = pool
+
+        # ✅ Handlers
+        app.add_handler(CommandHandler("start", start))
+        app.add_handler(CommandHandler("admin", admin))
+        app.add_handler(CommandHandler("accept", accept_payment))
+        app.add_handler(CommandHandler("ship", ship_order))
+        app.add_handler(CommandHandler("requesthelp", request_help))
+        app.add_handler(CommandHandler("faq", faq))
+        app.add_handler(CommandHandler("mustread", mustread))
+        app.add_handler(CallbackQueryHandler(handle_selection))
+        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+
+        log.info("✅ Connected to Postgres/Neon")
+        log.info("✅ Tables are ready")
+        log.info("✅ Bot connected to DB & starting polling...")
+
+        # ✅ Correct loop-safe polling for PTB 21+
+        await app.initialize()
+        await app.start()
+        await app.run_polling(stop_signals=None)  # prevents Render loop closing issue
+        await app.stop()
+        await app.shutdown()
+
+    # ✅ Safe for both Render & local runs
+    try:
+        asyncio.run(main())
+    except RuntimeError:
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(main())
 
 
 
