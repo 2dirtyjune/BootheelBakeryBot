@@ -721,9 +721,7 @@ async def request_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text("✅ Help request sent! The admin will contact you soon.")
 
-
 if __name__ == "__main__":
-
     async def main():
         # === Initialize the Neon database ===
         pool = await connect_db()
@@ -743,6 +741,11 @@ if __name__ == "__main__":
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
         print("✅ Bot running... Press Ctrl+C to stop.")
-        await app.run_polling()
+        # Do NOT use asyncio.run here — just await directly
+        await app.initialize()
+        await app.start()
+        await app.updater.start_polling()
+        await asyncio.Event().wait()  # keep it alive forever
 
-    asyncio.run(main())
+    asyncio.get_event_loop().run_until_complete(main())
+
