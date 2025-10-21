@@ -723,22 +723,26 @@ async def request_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 if __name__ == "__main__":
-    # === Initialize the Neon database ===
-    pool = asyncio.run(connect_db())
-    asyncio.run(setup_tables(pool))
 
-    # === Build and run the bot ===
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    async def main():
+        # === Initialize the Neon database ===
+        pool = await connect_db()
+        await setup_tables(pool)
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("admin", admin))
-    app.add_handler(CommandHandler("accept", accept_payment))
-    app.add_handler(CommandHandler("ship", ship_order))
-    app.add_handler(CommandHandler("requesthelp", request_help))
-    app.add_handler(CommandHandler("faq", faq))
-    app.add_handler(CommandHandler("mustread", mustread))
-    app.add_handler(CallbackQueryHandler(handle_selection))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+        # === Build and run the bot ===
+        app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    print("✅ Bot running... Press Ctrl+C to stop.")
-    app.run_polling()
+        app.add_handler(CommandHandler("start", start))
+        app.add_handler(CommandHandler("admin", admin))
+        app.add_handler(CommandHandler("accept", accept_payment))
+        app.add_handler(CommandHandler("ship", ship_order))
+        app.add_handler(CommandHandler("requesthelp", request_help))
+        app.add_handler(CommandHandler("faq", faq))
+        app.add_handler(CommandHandler("mustread", mustread))
+        app.add_handler(CallbackQueryHandler(handle_selection))
+        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+
+        print("✅ Bot running... Press Ctrl+C to stop.")
+        await app.run_polling()
+
+    asyncio.run(main())
