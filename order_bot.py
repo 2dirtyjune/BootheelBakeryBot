@@ -569,7 +569,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["collecting_address"] = "return_number"
         await update.message.reply_text("📬 Please enter your *Return #* (required):", parse_mode="Markdown")
 
-    elif stage == "return_number":
+      elif stage == "return_number":
         addr["return_number"] = text
         context.user_data["collecting_address"] = None
 
@@ -589,9 +589,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"{addr['town']}, {addr['state']} {addr['zip']}"
         )
 
-        # Use same fallback mechanism so your ibb.co URLs still show via preview if needed
         await _send_photo_or_link(update.message, CONFIRMATION_IMAGE_URL, summary, "Markdown")
-
         await _send_photo_or_link(
             update.message,
             INSTRUCTIONS_IMAGE_URL,
@@ -611,27 +609,17 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ORDERS_LOG.append(order_record)
         LAST_ORDER_BY_USER[user.id] = order_record
         PENDING_PAYMENTS[user.id] = order_id
-        await save_order(context.bot_data["db_pool"], order_id, user.id, items, total, addr.copy(), "pending")
 
-# === Update daily stats ===
-from datetime import date
-
-today = date.today()
-try:
-    async with context.bot_data["db_pool"].acquire() as conn:
-        await conn.execute("""
-            INSERT INTO stats (date, total_orders, revenue)
-            VALUES ($1, 1, $2)
-            ON CONFLICT (date)
-            DO UPDATE
-            SET total_orders = stats.total_orders + 1,
-                revenue = stats.revenue + EXCLUDED.revenue;
-        """, today, total)
-    print(f"📊 Stats updated: +1 order, +${total} on {today}")
-except Exception as e:
-    print(f"⚠️ Failed to update stats: {e}")
-    
-        await save_order(context.bot_data["db_pool"], order_id, user.id, items, total, addr.copy(), "pending")
+        # ✅ Save order to Neon database
+        await save_order(
+            context.bot_data["db_pool"],
+            order_id,
+            user.id,
+            items,
+            total,
+            addr.copy(),
+            "pending"
+        )
 
         admin_msg = (
             f"📦 *New Order #{order_id}*\n"
@@ -648,6 +636,7 @@ except Exception as e:
         )
         await context.bot.send_message(chat_id=ADMIN_ID, text=admin_msg, parse_mode="Markdown")
         await update.message.reply_text("✅ Once your payment is received, you'll get a confirmation message.")
+
 
 
     else:
@@ -802,6 +791,7 @@ if __name__ == "__main__":
         await app.run_polling()
 
     asyncio.run(main())
+
 
 
 
