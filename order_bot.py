@@ -630,8 +630,8 @@ try:
     print(f"📊 Stats updated: +1 order, +${total} on {today}")
 except Exception as e:
     print(f"⚠️ Failed to update stats: {e}")
-
-
+    
+        await save_order(context.bot_data["db_pool"], order_id, user.id, items, total, addr.copy(), "pending")
 
         admin_msg = (
             f"📦 *New Order #{order_id}*\n"
@@ -648,6 +648,7 @@ except Exception as e:
         )
         await context.bot.send_message(chat_id=ADMIN_ID, text=admin_msg, parse_mode="Markdown")
         await update.message.reply_text("✅ Once your payment is received, you'll get a confirmation message.")
+
 
     else:
         await update.message.reply_text("Sorry, I didn’t catch that. Please try again.")
@@ -801,6 +802,7 @@ if __name__ == "__main__":
         await app.run_polling()
 
     asyncio.run(main())
+
 
 
 
