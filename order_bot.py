@@ -24,19 +24,36 @@ async def setup_tables(pool):
                 balance NUMERIC DEFAULT 0,
                 cart JSONB DEFAULT '{}'::jsonb
             );
+
+            CREATE TABLE IF NOT EXISTS orders (
+                order_id TEXT PRIMARY KEY,
+                user_id BIGINT REFERENCES users(user_id),
+                items JSONB,
+                total NUMERIC,
+                address JSONB,
+                status TEXT DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT NOW()
+            );
+
+            CREATE TABLE IF NOT EXISTS stats (
+                date DATE PRIMARY KEY,
+                total_orders INT DEFAULT 0,
+                revenue NUMERIC DEFAULT 0
+            );
         """)
         print("✅ Tables are ready")
 
-async def save_user(pool, user_id, username, balance=0, cart=None):
-    if cart is None:
-        cart = {}
+
+async def save_order(pool, order_id, user_id, items, total, address, status="pending"):
+    """Insert or update an order in the database."""
     async with pool.acquire() as conn:
         await conn.execute("""
-            INSERT INTO users (user_id, username, balance, cart)
-            VALUES ($1, $2, $3, $4)
-            ON CONFLICT (user_id)
-            DO UPDATE SET username=$2, balance=$3, cart=$4
-        """, user_id, username, balance, cart)
+            INSERT INTO orders (order_id, user_id, items, total, address, status)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (order_id) DO UPDATE
+            SET status=$6, items=$3, total=$4, address=$5;
+        """, order_id, user_id, items, total, address, status)
+
 
 async def load_user(pool, user_id):
     async with pool.acquire() as conn:
@@ -594,6 +611,26 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ORDERS_LOG.append(order_record)
         LAST_ORDER_BY_USER[user.id] = order_record
         PENDING_PAYMENTS[user.id] = order_id
+       await save_order(context.bot_data["db_pool"], order_id, user.id, items, total, addr.copy(), "pending")
+# === Update daily stats ===
+from datetime import date
+
+today = date.today()
+try:
+    async with context.bot_data["db_pool"].acquire() as conn:
+        await conn.execute("""
+            INSERT INTO stats (date, total_orders, revenue)
+            VALUES ($1, 1, $2)
+            ON CONFLICT (date)
+            DO UPDATE
+            SET total_orders = stats.total_orders + 1,
+                revenue = stats.revenue + EXCLUDED.revenue;
+        """, today, total)
+    print(f"📊 Stats updated: +1 order, +${total} on {today}")
+except Exception as e:
+    print(f"⚠️ Failed to update stats: {e}")
+
+
 
         admin_msg = (
             f"📦 *New Order #{order_id}*\n"
@@ -667,6 +704,20 @@ async def ship_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
     order_completed["completed_ts"] = order_completed_ts
     COMPLETED_ORDERS.append(order_completed)
     LAST_ORDER_BY_USER[user_id] = order_completed
+# === Update order status in Neon to "shipped" ===
+try:
+    await save_order(
+        context.bot_data["db_pool"],
+        order["id"],
+        user_id,
+        order["items"],
+        order["total"],
+        order.get("address", {}),
+        "shipped"
+    )
+    print(f"📦 Order {order['id']} marked shipped in Neon DB.")
+except Exception as e:
+    print(f"⚠️ Failed to update order status in Neon: {e}")
 
     await context.bot.send_message(
         user_id,
@@ -722,14 +773,19 @@ async def request_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ Help request sent! The admin will contact you soon.")
 
 if __name__ == "__main__":
+    import asyncio
+
     async def main():
-        # === Initialize the Neon database ===
+        # === Connect to Neon ===
         pool = await connect_db()
         await setup_tables(pool)
 
-        # === Build and run the bot ===
+        # Store pool globally so commands can access it
+        from telegram.ext import ApplicationBuilder
         app = ApplicationBuilder().token(BOT_TOKEN).build()
+        app.bot_data["db_pool"] = pool
 
+        # === Handlers ===
         app.add_handler(CommandHandler("start", start))
         app.add_handler(CommandHandler("admin", admin))
         app.add_handler(CommandHandler("accept", accept_payment))
@@ -740,12 +796,10 @@ if __name__ == "__main__":
         app.add_handler(CallbackQueryHandler(handle_selection))
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
-        print("✅ Bot running... Press Ctrl+C to stop.")
-        # Do NOT use asyncio.run here — just await directly
-        await app.initialize()
-        await app.start()
-        await app.updater.start_polling()
-        await asyncio.Event().wait()  # keep it alive forever
+        print("✅ Bot connected to Neon & running...")
+        await app.run_polling()
 
-    asyncio.get_event_loop().run_until_complete(main())
+    asyncio.run(main())
+
+
 
