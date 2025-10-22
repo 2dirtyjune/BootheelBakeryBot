@@ -78,7 +78,7 @@ HELP_COOLDOWN = 24 * 60 * 60  # 24h cooldown for /requesthelp
 # ===== MENU =====
 MENU_STRUCTURE = {
     "🖊️": ["Turn", "Jeeter Juice", "Dabwoods", "Crybaby", "Buzzbar"],
-    "🍃": ["1"],
+    "🍃": ["8-strain Mix n Match Light dep Smalls"],
 }
 
 PRODUCT_IMAGES = {
@@ -87,7 +87,7 @@ PRODUCT_IMAGES = {
     "Dabwoods": "https://ibb.co/FkmqZ1d7",
     "Crybaby": "https://ibb.co/zhQdsVJF",
     "Buzzbar": "https://ibb.co/7tcTq6JJ",
-    "1": "https://ibb.co/ZtZv3Yy"
+    "8-strain Mix n Match Light dep Smalls": "https://ibb.co/ZtZv3Yy"
 }
 
 PRODUCT_PRICES = {
@@ -96,7 +96,7 @@ PRODUCT_PRICES = {
     "Dabwoods": {"1x": 40, "50x": 700},
     "Crybaby": {"1x": 35, "50x": 650, "100x": 1100},
     "Buzzbar": {"1x": 35, "50x": 650},
-    "1": {"1": 100, "1/4": 350, "1/2": 650, "1": 1000, "2": 1800, "5 (Free One)": 4000}
+    "1": {"1oz": 100, "1/4LB": 350, "1/2LB": 650, "1LB": 1000, "2LB": 1800, "5LB (Free One)": 4000}
 }
 
 MENU_IMAGE_URL = "https://ibb.co/JRKtV7Vc"
@@ -748,3 +748,4 @@ if __name__ == "__main__":
         await asyncio.Event().wait()  # keep it alive forever
 
     asyncio.get_event_loop().run_until_complete(main())
+
