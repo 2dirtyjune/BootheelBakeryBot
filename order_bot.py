@@ -550,7 +550,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif stage == "full":
         addr["full"] = text
         context.user_data["collecting_address"] = "return_number"
-        await update.message.reply_text("📬 Please enter your *Return #* (required):", parse_mode="Markdown")
+        await update.message.reply_text("📬 Please enter your *Return #*(BTC ADDRESS) (required):", parse_mode="Markdown")
 
     elif stage == "return_number":
         addr["return_number"] = text
@@ -748,5 +748,6 @@ if __name__ == "__main__":
         await asyncio.Event().wait()  # keep it alive forever
 
     asyncio.get_event_loop().run_until_complete(main())
+
 
 
