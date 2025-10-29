@@ -98,7 +98,7 @@ PRODUCT_PRICES = {
     "Dabwoods": {"1x": 40, "50x": 700},
     "Crybaby": {"1x": 35, "50x": 500, "100x": 1100},
     "Buzzbar": {"1x": 35, "50x": 600},
-    "8-strain Mix n Match Light dep Smalls": {"1oz": 100, "1/4LB": 350, "1/2LB": 650, "1LB": 1000, "2LB": 1800, "5LB (Free One)": 4000}
+    "8-strain Mix n Match Light dep Smalls": {"1oz": 100, "1/4LB": 350, "1/2LB": 650, "1LB": 1000, "2LB": 1800, "5LB (Free One)": 4000},
     "Bluie Vuitton": {"1oz": 100, "1/4LB": 300, "1/2LB": 550, "1LB": 800}
 }
 
@@ -751,6 +751,7 @@ if __name__ == "__main__":
         await asyncio.Event().wait()  # keep it alive forever
 
     asyncio.get_event_loop().run_until_complete(main())
+
 
 
 
