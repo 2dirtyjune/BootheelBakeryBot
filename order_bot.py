@@ -344,6 +344,7 @@ async def ship(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ===== HANDLE SELECTION =====
+# ===== HANDLE SELECTION =====
 async def handle_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -400,6 +401,7 @@ async def handle_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
             hrs = int((ORDER_COOLDOWN - (now - t)) / 3600)
             await safe_edit(query, f"⏳ Wait {hrs}h before another order.")
             return
+
         context.user_data["last_order_time"] = now
         order_id = generate_order_id()
         total = sum(i['price'] for i in order)
@@ -408,20 +410,20 @@ async def handle_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["order"] = []
         context.user_data["collecting_address"] = "first_name"
         await query.message.reply_text("📦 Please enter your *first name*:", parse_mode="Markdown")
+
         # 🧾 Save order record and update total spent
-pool = await connect_db()
-await pool.execute(
-    "INSERT INTO orders (id, user_id, total, return_number) VALUES ($1, $2, $3, $4)",
-    order_id, user.id, total, None
-)
-await pool.execute(
-    "UPDATE users SET total_spent = total_spent + $1 WHERE user_id = $2",
-    total, user.id
-)
+        pool = await connect_db()
+        await pool.execute(
+            "INSERT INTO orders (id, user_id, total, return_number) VALUES ($1, $2, $3, $4)",
+            order_id, user.id, total, None
+        )
+        await pool.execute(
+            "UPDATE users SET total_spent = total_spent + $1 WHERE user_id = $2",
+            total, user.id
+        )
 
-
-        # === Admin panel buttons ===
-        elif user.id == ADMIN_ID:
+    # === Admin panel buttons ===
+    elif user.id == ADMIN_ID:
         if data == "admin_current":
             await send_orders_list(query.message.reply_text, "📦 *Current Orders*", ORDERS_LOG)
             await query.message.reply_text("⬅️ Back to Main Menu", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back to Main Menu", callback_data="admin_back")]]))
@@ -448,13 +450,13 @@ await pool.execute(
                                            parse_mode="Markdown",
                                            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back to Main Menu", callback_data="admin_back")]]))
         elif data == "admin_back":
-            # clear any pending admin state
             context.user_data.pop("admin_waiting", None)
             await query.message.reply_text(
                 "🛠️ *Admin Console*\nChoose an action below:",
                 parse_mode="Markdown",
                 reply_markup=build_admin_menu()
             )
+
 
         # Confirm buttons
         elif data.startswith("confirm_delete:"):
@@ -694,6 +696,7 @@ if __name__ == "__main__":
     import asyncio
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
+
 
 
 
