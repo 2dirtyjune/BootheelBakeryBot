@@ -93,7 +93,7 @@ PRODUCT_PRICES = {
     "Bluie Vuitton": {"1oz": 100, "1/4LB": 300, "1/2LB": 550, "1LB": 800}
 }
 
-MENU_IMAGE_URL = "https://ibb.co/h1MtmWf0"
+MENU_IMAGE_URL = "https://ibb.co/JRKtV7Vc"
 CONFIRMATION_IMAGE_URL = "https://ibb.co/Y4tTxcHG"
 INSTRUCTIONS_IMAGE_URL = "https://ibb.co/PSZ5py2"
 FAQ_IMAGE_URL = "https://ibb.co/ZtZv3Yy"
@@ -108,18 +108,6 @@ def fmt_ts(ts: float) -> str:
 
 def generate_order_id(length=6):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
-
-def chunk_text(s: str, max_len: int = 3500):
-    chunks = []
-    while len(s) > max_len:
-        split_at = s.rfind("\n\n", 0, max_len)
-        if split_at == -1:
-            split_at = max_len
-        chunks.append(s[:split_at])
-        s = s[split_at:].lstrip()
-    if s:
-        chunks.append(s)
-    return chunks
 
 def est_today_date() -> date:
     if TZ_EST:
@@ -140,36 +128,13 @@ def build_main_menu(order_count=0):
         InlineKeyboardButton(f"🛒 View Cart ({order_count})", callback_data="view_cart"),
         InlineKeyboardButton("✅ Place Order", callback_data="confirm_order")
     ])
-    keyboard.append([
-        InlineKeyboardButton("👤 View Profile", callback_data="view_profile")
-    ])
-    return InlineKeyboardMarkup(keyboard)
-
-def build_category_menu(category, order_count=0):
-    items = MENU_STRUCTURE.get(category, [])
-    keyboard = [[InlineKeyboardButton(item, callback_data=f"item:{item}")] for item in items]
-    keyboard.append([
-        InlineKeyboardButton("⬅️ Back", callback_data="back"),
-        InlineKeyboardButton(f"🛒 View Cart ({order_count})", callback_data="view_cart")
-    ])
+    keyboard.append([InlineKeyboardButton("👤 View Profile", callback_data="view_profile")])
     return InlineKeyboardMarkup(keyboard)
 
 def build_cart_menu():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("🗑️ Clear Cart", callback_data="clear_cart")],
         [InlineKeyboardButton("⬅️ Back to Menu", callback_data="back")]
-    ])
-
-def build_admin_menu():
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("📦 Current Orders", callback_data="admin_current"),
-         InlineKeyboardButton("✅ Completed Orders", callback_data="admin_completed")],
-        [InlineKeyboardButton("📊 View Stats", callback_data="admin_stats"),
-         InlineKeyboardButton("💳 Accept Payment", callback_data="admin_accept")],
-        [InlineKeyboardButton("🚚 Ship Order", callback_data="admin_ship")],
-        [InlineKeyboardButton("🗑️ Delete Order", callback_data="admin_delete"),
-         InlineKeyboardButton("🔄 Reset User", callback_data="admin_reset")],
-        [InlineKeyboardButton("⬅️ Back to Main Menu", callback_data="admin_back")],
     ])
 
 # ===== COMMANDS =====
@@ -190,91 +155,70 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         build_main_menu()
     )
 
-async def faq(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await _send_photo_or_link(
-        update.message,
-        FAQ_IMAGE_URL,
-        "📘 *Frequently Asked Questions*\n\nRead this before ordering — it covers everything you need to know.",
-        "Markdown",
-        InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back", callback_data="back")]])
-    )
+# ===== PROFILE VIEW =====
+async def show_profile(update_or_query, user_id, back_to="back"):
+    profile = USER_PROFILES.get(user_id, {})
+    joined_ts = profile.get("joined", time.time())
+    joined_fmt = fmt_ts(joined_ts)
+    spent = profile.get("spent", 0)
+    completed = profile.get("completed", 0)
 
-async def mustread(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await _send_photo_or_link(
-        update.message,
-        MUSTREAD_IMAGE_URL,
-        "⚠️ *MUST READ BEFORE ORDERING*\n\nPlease review this info carefully to avoid mistakes or delays.",
-        "Markdown",
-        InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back", callback_data="back")]])
+    text = (
+        f"👤 *Your Profile*\n"
+        f"──────────────────\n"
+        f"🧾 Orders Completed: {completed}\n"
+        f"💰 Total Spent: ${spent:.2f}\n"
+        f"📅 Member Since: {joined_fmt}\n"
     )
+    markup = InlineKeyboardMarkup([
+        [InlineKeyboardButton("📦 View Orders", callback_data="view_orders")],
+        [InlineKeyboardButton("⬅️ Back", callback_data=back_to)]
+    ])
+    if isinstance(update_or_query, Update):
+        await update_or_query.message.reply_text(text, parse_mode="Markdown", reply_markup=markup)
+    else:
+        await update_or_query.message.reply_text(text, parse_mode="Markdown", reply_markup=markup)
 
-# ===== HANDLE BUTTONS =====
+# ===== HANDLE SELECTION =====
 async def handle_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     data = query.data
     user = query.from_user
-    order = context.user_data.get("order", [])
 
-    # === View Profile ===
     if data == "view_profile":
-        profile = USER_PROFILES.get(user.id, {})
-        joined_ts = profile.get("joined", time.time())
-        joined_fmt = fmt_ts(joined_ts)
-        spent = profile.get("spent", 0)
-        completed = profile.get("completed", 0)
-        text = (
-            f"👤 *Your Profile*\n"
-            f"──────────────────\n"
-            f"🧾 Orders Completed: {completed}\n"
-            f"💰 Total Spent: ${spent:.2f}\n"
-            f"📅 Member Since: {joined_fmt}\n"
-        )
-        await query.message.reply_text(text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("⬅️ Back", callback_data="back")]
+        await show_profile(query, user.id)
+        return
+
+    elif data == "view_orders":
+        user_orders = [o for o in COMPLETED_ORDERS if o.get("user_id") == user.id]
+        if not user_orders:
+            await query.message.reply_text("📦 You have no completed orders yet.", reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("⬅️ Back", callback_data="view_profile")]
+            ]))
+            return
+
+        user_orders = sorted(user_orders, key=lambda o: o.get("completed_ts", 0), reverse=True)
+        parts = []
+        for o in user_orders:
+            parts.append(
+                f"──────────────\n"
+                f"🧾 *Order #{o['id']}*\n"
+                f"🕒 {fmt_ts(o.get('completed_ts', o.get('ts', time.time())))}\n"
+                f"💰 ${o['total']}\n"
+                f"🚚 Tracking: `{o.get('tracking', '—')}`\n"
+                f"{o['items']}"
+            )
+        full_text = "📦 *Your Completed Orders:*\n\n" + "\n\n".join(parts)
+        await query.message.reply_text(full_text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("⬅️ Back to Profile", callback_data="view_profile")]
         ]))
         return
 
-    # === Normal Menu Navigation ===
-    if data.startswith("cat:"):
-        cat = data.split(":", 1)[1]
-        await query.message.reply_photo(MENU_IMAGE_URL, caption=f"📦 *{cat} Menu:*", parse_mode="Markdown", reply_markup=build_category_menu(cat, len(order)))
-
-    elif data.startswith("item:"):
-        product = data.split(":", 1)[1]
-        await query.message.reply_photo(PRODUCT_IMAGES.get(product, MENU_IMAGE_URL),
-                                        caption=f"🛍️ *{product}*\nSelect a quantity:",
-                                        parse_mode="Markdown",
-                                        reply_markup=InlineKeyboardMarkup([
-                                            *[[InlineKeyboardButton(f"{qty} - ${price}", callback_data=f"add:{product}:{qty}:{price}")]
-                                              for qty, price in PRODUCT_PRICES.get(product, {}).items()],
-                                            [InlineKeyboardButton("⬅️ Back", callback_data="back")]
-                                        ]))
-    elif data.startswith("add:"):
-        _, product, qty, price = data.split(":")
-        price = int(price)
-        order.append({"item": product, "qty": qty, "price": price})
-        context.user_data["order"] = order
-        await query.answer(f"Added {qty} {product} ✅")
-
-    elif data == "view_cart":
-        if not order:
-            await query.message.reply_text("🛒 Your cart is empty!", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back", callback_data="back")]]))
-        else:
-            lines = [f"• {i['qty']} {i['item']} - ${i['price']}" for i in order]
-            total = sum(i["price"] for i in order)
-            await query.message.reply_text(f"🛒 *Your Cart:*\n\n" + "\n".join(lines) + f"\n\n💰 *Total:* ${total}",
-                                           parse_mode="Markdown",
-                                           reply_markup=build_cart_menu())
-
-    elif data == "clear_cart":
-        context.user_data["order"] = []
-        await query.message.reply_text("🗑️ Cart cleared!")
-
     elif data == "back":
-        await query.message.reply_photo(MENU_IMAGE_URL, caption="👋 Choose a category:", reply_markup=build_main_menu(len(order)))
+        await query.message.reply_photo(MENU_IMAGE_URL, caption="👋 Choose a category:", reply_markup=build_main_menu())
 
-# ===== ADMIN + SHIPPING =====
+# ===== ADMIN SHIP =====
 async def ship_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.from_user.id != ADMIN_ID:
         return
@@ -297,7 +241,6 @@ async def ship_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
     COMPLETED_ORDERS.append(order_completed)
     LAST_ORDER_BY_USER[user_id] = order_completed
 
-    # === Update profile ===
     if user_id in USER_PROFILES:
         USER_PROFILES[user_id]["completed"] += 1
         USER_PROFILES[user_id]["spent"] += order_completed.get("total", 0)
@@ -316,14 +259,10 @@ if __name__ == "__main__":
     async def main():
         pool = await connect_db()
         await setup_tables(pool)
-
         app = ApplicationBuilder().token(BOT_TOKEN).build()
         app.add_handler(CommandHandler("start", start))
         app.add_handler(CommandHandler("ship", ship_order))
-        app.add_handler(CommandHandler("faq", faq))
-        app.add_handler(CommandHandler("mustread", mustread))
         app.add_handler(CallbackQueryHandler(handle_selection))
-
         print("✅ Bot running... Press Ctrl+C to stop.")
         await app.initialize()
         await app.start()
@@ -331,4 +270,6 @@ if __name__ == "__main__":
         await asyncio.Event().wait()
 
     asyncio.get_event_loop().run_until_complete(main())
+
+
 
