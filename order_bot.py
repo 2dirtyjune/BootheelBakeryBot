@@ -420,8 +420,8 @@ await pool.execute(
 )
 
 
-    # === Admin panel buttons ===
-    elif user.id == ADMIN_ID:
+        # === Admin panel buttons ===
+        elif user.id == ADMIN_ID:
         if data == "admin_current":
             await send_orders_list(query.message.reply_text, "📦 *Current Orders*", ORDERS_LOG)
             await query.message.reply_text("⬅️ Back to Main Menu", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back to Main Menu", callback_data="admin_back")]]))
@@ -695,6 +695,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
         print("🛑 Bot stopped manually")
+
 
 
 
