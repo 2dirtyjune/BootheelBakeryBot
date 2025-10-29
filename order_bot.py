@@ -6,15 +6,12 @@ import logging
 import asyncio
 import asyncpg
 from datetime import datetime, date
-
-# ===== Timezone =====
 try:
     from zoneinfo import ZoneInfo  # Python 3.9+
     TZ_EST = ZoneInfo("America/New_York")
 except Exception:
     TZ_EST = None  # fall back to local if zoneinfo isn't available
 
-# ===== Telegram Imports =====
 from telegram import (
     Update,
     InlineKeyboardButton,
@@ -30,17 +27,17 @@ from telegram.ext import (
     filters,
 )
 
-# ===== Logging =====
+# ===== LOGGING =====
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
-# ===== Config =====
+# ===== CONFIG =====
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "8296620712:AAFQhebqqLLcjJgSjEbC9NkxvoT6DncrC7o")
 ADMIN_ID = int(os.environ.get("ADMIN_ID", "2125320923"))
 ORDER_COOLDOWN = 24 * 60 * 60
 HELP_COOLDOWN = 24 * 60 * 60
 
-# ===== Database Config =====
+# ===== DATABASE CONFIG =====
 DB_URL = os.getenv(
     "DATABASE_URL",
     "postgresql://neondb_owner:npg_HwxTk65vqgMW@ep-spring-water-ad4np5eb-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require",
@@ -79,8 +76,7 @@ async def load_user(pool, user_id):
         row = await conn.fetchrow("SELECT * FROM users WHERE user_id=$1", user_id)
         return dict(row) if row else None
 
-
-# ===== MENU DATA =====
+# ===== MENU =====
 MENU_STRUCTURE = {
     "🖊️": ["Turn", "Jeeter Juice", "Dabwoods", "Crybaby", "Buzzbar"],
     "🍃": ["8-strain Mix n Match Light dep Smalls"],
@@ -103,10 +99,8 @@ PRODUCT_PRICES = {
     "Dabwoods": {"1x": 40, "50x": 700},
     "Crybaby": {"1x": 35, "50x": 500, "100x": 1000},
     "Buzzbar": {"1x": 35, "50x": 600},
-    "8-strain Mix n Match Light Dep Smalls": {
-        "1oz": 100, "1/4LB": 250, "1/2LB": 450, "1LB": 800, "2LB": 1600
-    },
-    "Bluie Vuitton": {"1oz": 100, "1/4LB": 300, "1/2LB": 550, "1LB": 800},
+    "8-strain Mix n Match Light Dep Smalls": {"1oz": 100, "1/4LB": 250, "1/2LB": 450, "1LB": 800, "2LB": 1600},
+    "Bluie Vuitton": {"1oz": 100, "1/4LB": 300, "1/2LB": 550, "1LB": 800}
 }
 
 MENU_IMAGE_URL = "https://ibb.co/JRKtV7Vc"
@@ -115,7 +109,7 @@ INSTRUCTIONS_IMAGE_URL = "https://ibb.co/PSZ5py2"
 FAQ_IMAGE_URL = "https://ibb.co/ZtZv3Yy"
 MUSTREAD_IMAGE_URL = "https://ibb.co/S7Z9DGfX"
 
-# ===== DATA STATE =====
+# ===== DATA =====
 ORDERS_LOG = []
 COMPLETED_ORDERS = []
 USER_STATS = {}
@@ -123,16 +117,13 @@ KNOWN_USERS = set()
 PENDING_PAYMENTS = {}
 LAST_ORDER_BY_USER = {}
 
-# ===== Helpers =====
+# ===== HELPERS =====
 def fmt_ts(ts: float) -> str:
     if TZ_EST:
         dt = datetime.fromtimestamp(ts, TZ_EST)
     else:
         dt = datetime.fromtimestamp(ts)
     return dt.strftime("%b %d, %Y – %I:%M %p")
-
-def generate_order_id(length=6):
-    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
 def chunk_text(s: str, max_len: int = 3500):
     chunks = []
@@ -146,12 +137,15 @@ def chunk_text(s: str, max_len: int = 3500):
         chunks.append(s)
     return chunks
 
-# ===== Menus =====
+def generate_order_id(length=6):
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+
+# ===== MENUS =====
 def build_main_menu(order_count=0):
     keyboard = [[InlineKeyboardButton(cat, callback_data=f"cat:{cat}")] for cat in MENU_STRUCTURE]
     keyboard.append([
         InlineKeyboardButton(f"🛒 View Cart ({order_count})", callback_data="view_cart"),
-        InlineKeyboardButton("✅ Place Order", callback_data="confirm_order"),
+        InlineKeyboardButton("✅ Place Order", callback_data="confirm_order")
     ])
     return InlineKeyboardMarkup(keyboard)
 
@@ -160,7 +154,7 @@ def build_category_menu(category, order_count=0):
     keyboard = [[InlineKeyboardButton(item, callback_data=f"item:{item}")] for item in items]
     keyboard.append([
         InlineKeyboardButton("⬅️ Back", callback_data="back"),
-        InlineKeyboardButton(f"🛒 View Cart ({order_count})", callback_data="view_cart"),
+        InlineKeyboardButton(f"🛒 View Cart ({order_count})", callback_data="view_cart")
     ])
     return InlineKeyboardMarkup(keyboard)
 
@@ -172,7 +166,7 @@ def build_price_menu(product, order_count=0):
     ]
     keyboard.append([
         InlineKeyboardButton("⬅️ Back", callback_data="back"),
-        InlineKeyboardButton(f"🛒 View Cart ({order_count})", callback_data="view_cart"),
+        InlineKeyboardButton(f"🛒 View Cart ({order_count})", callback_data="view_cart")
     ])
     return InlineKeyboardMarkup(keyboard)
 
@@ -182,7 +176,7 @@ def build_cart_menu():
         [InlineKeyboardButton("⬅️ Back to Menu", callback_data="back")]
     ])
 
-# ===== Safe Edit =====
+# ===== SAFE EDIT =====
 async def safe_edit(query, text, markup=None, photo=None, mode=None):
     try:
         if photo:
@@ -196,13 +190,20 @@ async def safe_edit(query, text, markup=None, photo=None, mode=None):
             else:
                 await query.edit_message_text(text=text, reply_markup=markup, parse_mode=mode)
     except Exception as e:
-        log.warning(f"safe_edit fallback: {e}")
+        log.warning(f"safe_edit fallback due to: {e}")
         if photo:
             await query.message.reply_text(f"{text}\n\n{photo}", reply_markup=markup, parse_mode=mode)
         else:
             await query.message.reply_text(text, reply_markup=markup, parse_mode=mode)
 
-# ===== Commands =====
+# ===== INFO COMMANDS =====
+async def faq(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_photo(FAQ_IMAGE_URL, caption="📘 *FAQ*", parse_mode="Markdown")
+
+async def mustread(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_photo(MUSTREAD_IMAGE_URL, caption="⚠️ *Must Read Before Ordering*", parse_mode="Markdown")
+
+# ===== START COMMAND =====
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     if update.message.chat.type != "private":
@@ -215,27 +216,29 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=build_main_menu()
     )
 
-async def faq(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_photo(FAQ_IMAGE_URL, caption="📘 *FAQ*", parse_mode="Markdown")
-
-async def mustread(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_photo(MUSTREAD_IMAGE_URL, caption="⚠️ *Must Read Before Ordering*", parse_mode="Markdown")
-
-# ===== Main =====
-async def main():
-    pool = await connect_db()
-    await setup_tables(pool)
-
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("faq", faq))
-    app.add_handler(CommandHandler("mustread", mustread))
-
-    print("✅ Bot running...")
-    await app.run_polling()
-
+# ===== MAIN ENTRY (FIXED) =====
 if __name__ == "__main__":
-    asyncio.run(main())
+    import asyncio
 
+    async def main():
+        pool = await connect_db()
+        await setup_tables(pool)
 
+        app = ApplicationBuilder().token(BOT_TOKEN).build()
+        app.add_handler(CommandHandler("start", start))
+        app.add_handler(CommandHandler("faq", faq))
+        app.add_handler(CommandHandler("mustread", mustread))
+
+        print("✅ Bot is live and running...")
+        await app.run_polling(close_loop=False)
+
+    try:
+        asyncio.run(main())
+    except RuntimeError as e:
+        if "already running" in str(e):
+            loop = asyncio.get_event_loop()
+            loop.create_task(main())
+            print("💤 Bot still running inside existing event loop...")
+        else:
+            raise
 
