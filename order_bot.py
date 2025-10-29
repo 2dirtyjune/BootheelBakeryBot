@@ -22,7 +22,18 @@ async def setup_tables(pool):
                 user_id BIGINT PRIMARY KEY,
                 username TEXT,
                 balance NUMERIC DEFAULT 0,
-                cart JSONB DEFAULT '{}'::jsonb
+                cart JSONB DEFAULT '{}'::jsonb,
+                joined_at TIMESTAMP DEFAULT NOW(),
+                total_spent NUMERIC DEFAULT 0
+            );
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS orders (
+                id TEXT PRIMARY KEY,
+                user_id BIGINT REFERENCES users(user_id),
+                total NUMERIC,
+                return_number TEXT,
+                ts TIMESTAMP DEFAULT NOW()
             );
         """)
         print("✅ Tables are ready")
@@ -43,6 +54,11 @@ async def load_user(pool, user_id):
         row = await conn.fetchrow("SELECT * FROM users WHERE user_id=$1", user_id)
         return dict(row) if row else None
 
+async def get_user_profile(pool, user_id):
+    async with pool.acquire() as conn:
+        user = await conn.fetchrow("SELECT * FROM users WHERE user_id=$1", user_id)
+        orders = await conn.fetch("SELECT * FROM orders WHERE user_id=$1 ORDER BY ts DESC", user_id)
+        return user, orders
 from datetime import datetime, date
 try:
     from zoneinfo import ZoneInfo  # Python 3.9+
@@ -130,6 +146,9 @@ def build_main_menu(order_count=0):
     keyboard.append([
         InlineKeyboardButton(f"🛒 View Cart ({order_count})", callback_data="view_cart"),
         InlineKeyboardButton("✅ Place Order", callback_data="confirm_order")
+    ])
+    keyboard.append([
+        InlineKeyboardButton("👤 View My Profile", callback_data="view_profile")
     ])
     return InlineKeyboardMarkup(keyboard)
 
@@ -284,6 +303,44 @@ async def admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown",
         reply_markup=build_admin_menu()
     )
+# ===== ADMIN SHIP COMMAND =====
+async def ship(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.message.from_user
+    if user.id != ADMIN_ID:
+        await update.message.reply_text("🚫 You are not authorized to use this command.")
+        return
+
+    # Expect: /ship <user_id> <tracking_number>
+    parts = update.message.text.split(maxsplit=2)
+    if len(parts) < 3:
+        await update.message.reply_text("❗ Usage: /ship <user_id> <tracking_number>")
+        return
+
+    target_id = int(parts[1])
+    tracking_number = parts[2].strip()
+
+    pool = await connect_db()
+
+    # ✅ Update the most recent order for that user with this tracking number
+    await pool.execute("""
+        UPDATE orders
+        SET return_number = $1
+        WHERE user_id = $2
+        ORDER BY ts DESC
+        LIMIT 1
+    """, tracking_number, target_id)
+
+    # 📨 Notify the user
+    try:
+        await context.bot.send_message(
+            target_id,
+            f"📦 Your order has been shipped!\nTracking #: `{tracking_number}`",
+            parse_mode="Markdown"
+        )
+    except Exception as e:
+        await update.message.reply_text(f"⚠️ Could not message the user: {e}")
+
+    await update.message.reply_text(f"✅ Order updated and tracking # sent to {target_id}.")
 
 
 # ===== HANDLE SELECTION =====
@@ -351,6 +408,17 @@ async def handle_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["order"] = []
         context.user_data["collecting_address"] = "first_name"
         await query.message.reply_text("📦 Please enter your *first name*:", parse_mode="Markdown")
+        # 🧾 Save order record and update total spent
+pool = await connect_db()
+await pool.execute(
+    "INSERT INTO orders (id, user_id, total, return_number) VALUES ($1, $2, $3, $4)",
+    order_id, user.id, total, None
+)
+await pool.execute(
+    "UPDATE users SET total_spent = total_spent + $1 WHERE user_id = $2",
+    total, user.id
+)
+
 
     # === Admin panel buttons ===
     elif user.id == ADMIN_ID:
@@ -423,6 +491,43 @@ async def handle_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data.pop("admin_waiting", None)
             await query.message.reply_text("❌ Cancelled.",
                                            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back to Main Menu", callback_data="admin_back")]]))
+
+
+            # ===== PROFILE VIEW HANDLER =====
+async def view_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    user = query.from_user
+
+    pool = await connect_db()
+    user_data, orders = await get_user_profile(pool, user.id)
+
+    if not user_data:
+        await query.message.reply_text("❌ Profile not found. Use /start first.")
+        return
+
+    joined_at = user_data["joined_at"].strftime("%b %d, %Y") if user_data["joined_at"] else "Unknown"
+    total_spent = float(user_data["total_spent"] or 0)
+    text = f"👤 *Your Profile*\n\n"
+    text += f"🪪 Username: {user.username or 'N/A'}\n"
+    text += f"📅 Joined: {joined_at}\n"
+    text += f"💰 Total Spent: ${total_spent:.2f}\n\n"
+
+    if not orders:
+        text += "_You have no completed orders yet._"
+    else:
+        text += "📦 *Your Orders:*\n"
+        for o in orders[:10]:  # show last 10 orders
+            text += f"• #{o['id']} — ${o['total']} — Return #: {o['return_number'] or '—'}\n"
+
+    await query.message.reply_text(
+        text,
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("⬅️ Back", callback_data="back")]]
+        )
+    )
+
 
 
 async def send_orders_list(send_func, title: str, orders: list):
@@ -569,12 +674,15 @@ async def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     # Register handlers
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("admin", admin))
-    app.add_handler(CommandHandler("faq", faq))
-    app.add_handler(CommandHandler("mustread", mustread))
-    app.add_handler(CallbackQueryHandler(handle_selection))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+app.add_handler(CommandHandler("start", start))
+app.add_handler(CommandHandler("ship", ship))
+app.add_handler(CommandHandler("admin", admin))
+app.add_handler(CommandHandler("faq", faq))
+app.add_handler(CommandHandler("mustread", mustread))
+app.add_handler(CallbackQueryHandler(view_profile, pattern="^view_profile$"))
+app.add_handler(CallbackQueryHandler(handle_selection))
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+
 
     print("✅ Bot is live and running...")
     await app.initialize()
@@ -587,6 +695,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
         print("🛑 Bot stopped manually")
+
 
 
 
