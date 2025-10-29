@@ -79,6 +79,7 @@ HELP_COOLDOWN = 24 * 60 * 60  # 24h cooldown for /requesthelp
 MENU_STRUCTURE = {
     "🖊️": ["Turn", "Jeeter Juice", "Dabwoods", "Crybaby", "Buzzbar"],
     "🍃": ["8-strain Mix n Match Light dep Smalls"],
+    "🍄": ["Bluie Vuitton"],
 }
 
 PRODUCT_IMAGES = {
@@ -88,15 +89,17 @@ PRODUCT_IMAGES = {
     "Crybaby": "https://ibb.co/zhQdsVJF",
     "Buzzbar": "https://ibb.co/7tcTq6JJ",
     "8-strain Mix n Match Light dep Smalls": "https://ibb.co/ZtZv3Yy"
+    "Bluie Vuitton": "https://ibb.co/fd3F9vd5"
 }
 
 PRODUCT_PRICES = {
-    "Turn": {"1x": 35, "25x": 350, "50x": 650, "100x": 1200},
-    "Jeeter Juice": {"1x": 35, "25x": 350, "50x": 650, "100x": 1200},
+    "Turn": {"1x": 35, "25x": 350, "50x": 500, "100x": 1000},
+    "Jeeter Juice": {"1x": 35, "25x": 350, "50x": 500, "100x": 1000},
     "Dabwoods": {"1x": 40, "50x": 700},
-    "Crybaby": {"1x": 35, "50x": 650, "100x": 1100},
-    "Buzzbar": {"1x": 35, "50x": 650},
+    "Crybaby": {"1x": 35, "50x": 500, "100x": 1100},
+    "Buzzbar": {"1x": 35, "50x": 600},
     "8-strain Mix n Match Light dep Smalls": {"1oz": 100, "1/4LB": 350, "1/2LB": 650, "1LB": 1000, "2LB": 1800, "5LB (Free One)": 4000}
+    "Bluie Vuitton": {"1oz": 100, "1/4LB": 300, "1/2LB": 550, "1LB": 800}
 }
 
 MENU_IMAGE_URL = "https://ibb.co/JRKtV7Vc"
@@ -748,6 +751,7 @@ if __name__ == "__main__":
         await asyncio.Event().wait()  # keep it alive forever
 
     asyncio.get_event_loop().run_until_complete(main())
+
 
 
 
