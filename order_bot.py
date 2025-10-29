@@ -663,6 +663,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif stage == "return_number":
         addr["return_number"] = text
 
+
 # ===== MAIN ENTRY POINT =====
 import asyncio
 
@@ -678,7 +679,7 @@ async def main():
         .build()
     )
 
-    # Add handlers
+    # Handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("admin", admin))
     app.add_handler(CommandHandler("faq", faq))
@@ -688,22 +689,22 @@ async def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
     print("💤 Bot still running...")
-    # This version prevents double-loop conflicts
-    await app.run_polling(close_loop=False)
+    await app.run_polling()  # <- simplest, cleanest async entry point
 
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
-    except RuntimeError as e:
-        # Render sometimes has a loop already running
-        if "event loop is running" in str(e).lower():
-            loop = asyncio.get_event_loop()
+        # Check if loop already exists
+        try:
+            loop = asyncio.get_running_loop()
+            # If a loop is already running, schedule main on it
             loop.create_task(main())
             loop.run_forever()
-        else:
-            raise
-
+        except RuntimeError:
+            # If no loop, start fresh
+            asyncio.run(main())
+    except KeyboardInterrupt:
+        print("🛑 Bot stopped manually")
 
 
 
