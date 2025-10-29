@@ -5,7 +5,7 @@ import time
 import logging
 import asyncio
 import asyncpg
-from datetime import datetime, date
+from datetime import datetime
 from telegram import (
     Update,
     InlineKeyboardButton,
@@ -46,7 +46,7 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
 # ===== CONFIG =====
-BOT_TOKEN = os.environ.get("BOT_TOKEN", "8296620712:AAFQhebqqLLcjJgSjEbC9NkxvoT6DncrC7o")
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 ADMIN_ID = int(os.environ.get("ADMIN_ID", "2125320923"))
 
 try:
@@ -58,7 +58,7 @@ except Exception:
 # ===== DATA =====
 ORDERS_LOG = []
 COMPLETED_ORDERS = []
-USER_PROFILES = {}  # user_id -> {"joined": ts, "spent": float, "completed": int}
+USER_PROFILES = {}
 
 # ===== PRODUCT MENU =====
 MENU_STRUCTURE = {
@@ -101,7 +101,6 @@ def build_main_menu():
 
 # ===== COMMANDS =====
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """User start command."""
     user = update.message.from_user
     if update.message.chat.type != "private":
         return
@@ -133,14 +132,12 @@ async def show_profile(query, user_id):
     await query.message.reply_text(text, parse_mode="Markdown", reply_markup=markup)
 
 async def show_user_orders(query, user_id):
-    """List user's completed orders."""
     user_orders = [o for o in COMPLETED_ORDERS if o.get("user_id") == user_id]
     if not user_orders:
         await query.message.reply_text("📦 You have no completed orders yet.", reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("⬅️ Back", callback_data="view_profile")]
         ]))
         return
-
     user_orders = sorted(user_orders, key=lambda o: o.get("completed_ts", 0), reverse=True)
     lines = []
     for o in user_orders:
@@ -163,7 +160,6 @@ async def handle_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     data = query.data
     user = query.from_user
-
     if data == "view_profile":
         await show_profile(query, user.id)
     elif data == "view_orders":
@@ -173,7 +169,6 @@ async def handle_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ===== ADMIN SHIP COMMAND =====
 async def ship_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Mark order shipped + update profile."""
     if update.message.from_user.id != ADMIN_ID:
         return
     if len(context.args) < 2:
@@ -182,7 +177,6 @@ async def ship_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = int(context.args[0])
     tracking = context.args[1]
-
     order = next((o for o in ORDERS_LOG if o.get("user_id") == user_id), None)
     if not order:
         await update.message.reply_text("❌ No pending order found.")
@@ -205,6 +199,12 @@ async def ship_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(f"✅ Order #{order['id']} marked as shipped.")
 
+# ===== KEEP ALIVE =====
+async def keep_alive():
+    while True:
+        print("💤 Bot still running...")
+        await asyncio.sleep(60)
+
 # ===== RUN BOT =====
 async def main():
     pool = await connect_db()
@@ -215,11 +215,22 @@ async def main():
     app.add_handler(CommandHandler("ship", ship_order))
     app.add_handler(CallbackQueryHandler(handle_selection))
 
+    asyncio.create_task(keep_alive())
     print("✅ Bot is live and running...")
-    await app.run_polling(close_loop=False)
+    await app.run_polling()
 
+# ===== SAFE RENDER LOOP FIX =====
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(main())
+            loop.run_forever()
+        else:
+            loop.run_until_complete(main())
+    except KeyboardInterrupt:
+        print("🟥 Bot manually stopped")
+
 
 
 
