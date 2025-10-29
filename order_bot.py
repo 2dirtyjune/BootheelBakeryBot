@@ -667,10 +667,14 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ===== MAIN ENTRY POINT =====
 import asyncio
 
-async def main():
+async def init_db():
     pool = await connect_db()
     await setup_tables(pool)
     print("✅ Tables are ready")
+
+def main():
+    # One-time async DB prep, then hand control to PTB's own loop
+    asyncio.run(init_db())
     print("✅ Bot is live and running...")
 
     app = (
@@ -689,22 +693,11 @@ async def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
     print("💤 Bot still running...")
-    await app.run_polling()  # <- simplest, cleanest async entry point
-
+    # IMPORTANT: This manages its own event loop. Do NOT wrap in asyncio.run.
+    app.run_polling()
 
 if __name__ == "__main__":
-    try:
-        # Check if loop already exists
-        try:
-            loop = asyncio.get_running_loop()
-            # If a loop is already running, schedule main on it
-            loop.create_task(main())
-            loop.run_forever()
-        except RuntimeError:
-            # If no loop, start fresh
-            asyncio.run(main())
-    except KeyboardInterrupt:
-        print("🛑 Bot stopped manually")
+    main()
 
 
 
