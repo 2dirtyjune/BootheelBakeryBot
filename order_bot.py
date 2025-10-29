@@ -673,7 +673,14 @@ async def init_db():
     print("✅ Tables are ready")
 
 def main():
-    # One-time async DB prep, then hand control to PTB's own loop
+    # Ensure there is an active event loop before PTB tries to use it
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+    # Initialize database once (async)
     asyncio.run(init_db())
     print("✅ Bot is live and running...")
 
@@ -693,17 +700,9 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
     print("💤 Bot still running...")
-    # IMPORTANT: This manages its own event loop. Do NOT wrap in asyncio.run.
-    app.run_polling()
+    app.run_polling()  # synchronous call, manages its own loop
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
 
 
