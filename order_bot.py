@@ -556,31 +556,4 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif stage == "return_number":
         addr["return_number"] = text
 
-# ===== MAIN ENTRY POINT =====
-import asyncio
-from telegram.ext import ApplicationBuilder
-
-async def main():
-    # Connect to database
-    pool = await connect_db()
-    await setup_tables(pool)
-
-    # Build bot
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-
-    # === Register handlers ===
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("admin", admin))
-    app.add_handler(CommandHandler("faq", faq))
-    app.add_handler(CommandHandler("mustread", mustread))
-    app.add_handler(CallbackQueryHandler(handle_selection))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-
-    print("✅ Bot is live and running...")
-    await app.run_polling()
-
-if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("🛑 Bot stopped manually")
+  asyncio.get_event_loop().run_until_complete(main())
