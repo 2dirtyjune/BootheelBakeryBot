@@ -93,7 +93,7 @@ PRODUCT_PRICES = {
     "Bluie Vuitton": {"1oz": 100, "1/4LB": 300, "1/2LB": 550, "1LB": 800}
 }
 
-MENU_IMAGE_URL = "https://ibb.co/JRKtV7Vc"
+MENU_IMAGE_URL = "https://ibb.co/h1MtmWf0"
 CONFIRMATION_IMAGE_URL = "https://ibb.co/Y4tTxcHG"
 INSTRUCTIONS_IMAGE_URL = "https://ibb.co/PSZ5py2"
 FAQ_IMAGE_URL = "https://ibb.co/ZtZv3Yy"
@@ -331,3 +331,4 @@ if __name__ == "__main__":
         await asyncio.Event().wait()
 
     asyncio.get_event_loop().run_until_complete(main())
+
