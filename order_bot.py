@@ -664,14 +664,10 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         addr["return_number"] = text
 
 # ===== MAIN ENTRY POINT =====
-import asyncio
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters
-
-
-# ===== MAIN ENTRY POINT =====
 async def main():
     pool = await connect_db()
     await setup_tables(pool)
+    print("✅ Tables are ready")
     print("✅ Bot is live and running...")
 
     app = (
@@ -689,21 +685,22 @@ async def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
     print("💤 Bot still running...")
-    await app.run_polling()
+    # 👇 This is the key fix — tell PTB not to close the event loop
+    await app.run_polling(close_loop=False)
 
 
 if __name__ == "__main__":
-    try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+    import asyncio
 
     try:
-        loop.create_task(main())
-        loop.run_forever()
-    except KeyboardInterrupt:
-        print("🛑 Bot stopped manually")
+        asyncio.get_running_loop()
+    except RuntimeError:
+        asyncio.run(main())
+    else:
+        # If a loop is already running (Render environment)
+        asyncio.ensure_future(main())
+
+
 
 
 
