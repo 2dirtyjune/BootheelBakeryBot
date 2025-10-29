@@ -343,7 +343,7 @@ async def ship(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"✅ Order updated and tracking # sent to {target_id}.")
 
 
-# ===== HANDLE SELECTION =====
+
 # ===== HANDLE SELECTION =====
 async def handle_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -678,6 +678,7 @@ async def main():
         .build()
     )
 
+    # Add handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("admin", admin))
     app.add_handler(CommandHandler("faq", faq))
@@ -687,19 +688,21 @@ async def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
     print("💤 Bot still running...")
+    # This version prevents double-loop conflicts
     await app.run_polling(close_loop=False)
 
 
 if __name__ == "__main__":
     try:
-        # If there's already a loop running (Render or Jupyter environment)
-        loop = asyncio.get_running_loop()
-        loop.create_task(main())
-        loop.run_forever()
-    except RuntimeError:
-        # Normal case for standard environments
         asyncio.run(main())
-
+    except RuntimeError as e:
+        # Render sometimes has a loop already running
+        if "event loop is running" in str(e).lower():
+            loop = asyncio.get_event_loop()
+            loop.create_task(main())
+            loop.run_forever()
+        else:
+            raise
 
 
 
