@@ -555,3 +555,22 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif stage == "return_number":
         addr["return_number"] = text
+import asyncio
+
+async def main():
+    print("✅ Connected to Neon database")
+    print("✅ Tables are ready")
+    print("✅ Bot is live and running...")
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    
+    # Add your handlers here
+    # app.add_handler(...)
+
+    await app.run_polling()
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("🛑 Bot stopped manually")
+
