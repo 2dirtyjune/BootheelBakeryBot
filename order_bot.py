@@ -666,35 +666,36 @@ import asyncio
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters
 
 async def main():
-    # Connect to Neon
     pool = await connect_db()
     await setup_tables(pool)
-
-    # Create the bot
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-
-    # Register handlers
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("ship", ship))
-app.add_handler(CommandHandler("admin", admin))
-app.add_handler(CommandHandler("faq", faq))
-app.add_handler(CommandHandler("mustread", mustread))
-app.add_handler(CallbackQueryHandler(view_profile, pattern="^view_profile$"))
-app.add_handler(CallbackQueryHandler(handle_selection))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-
-
     print("✅ Bot is live and running...")
+
+    app = (
+        ApplicationBuilder()
+        .token(BOT_TOKEN)
+        .build()
+    )
+
+    # Add your handlers
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("admin", admin))
+    app.add_handler(CallbackQueryHandler(handle_selection))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+    app.add_handler(CommandHandler("faq", faq))
+    app.add_handler(CommandHandler("mustread", mustread))
+
     await app.initialize()
     await app.start()
+    print("💤 Bot still running...")
     await app.updater.start_polling()
-    await asyncio.Event().wait()  # keep the bot alive forever
+    await app.updater.idle()
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except (KeyboardInterrupt, SystemExit):
-        print("🛑 Bot stopped manually")
+    import asyncio
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
+
+
 
 
 
