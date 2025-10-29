@@ -667,6 +667,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 import asyncio
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters
 
+
 # ===== MAIN ENTRY POINT =====
 async def main():
     pool = await connect_db()
@@ -688,13 +689,21 @@ async def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
     print("💤 Bot still running...")
-    await app.run_polling()   # ← this line must be indented inside the main() function
+    await app.run_polling()
+
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
 
-
-
+    try:
+        loop.create_task(main())
+        loop.run_forever()
+    except KeyboardInterrupt:
+        print("🛑 Bot stopped manually")
 
 
 
