@@ -115,7 +115,7 @@ PRODUCT_PRICES = {
     "Bluie Vuitton": {"1oz": 100, "1/4LB": 300, "1/2LB": 550, "1LB": 800}
 }
 
-MENU_IMAGE_URL = "https://ibb.co/JRKtV7Vc"
+MENU_IMAGE_URL = "https://ibb.co/h1MtmWf0"
 CONFIRMATION_IMAGE_URL = "https://ibb.co/Y4tTxcHG"
 INSTRUCTIONS_IMAGE_URL = "https://ibb.co/PSZ5py2"
 
@@ -603,6 +603,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
         print("🛑 Bot stopped manually")
+
 
 
 
