@@ -568,7 +568,7 @@ async def main():
     # Create the bot
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    # Register all handlers
+    # Register handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("admin", admin))
     app.add_handler(CommandHandler("faq", faq))
@@ -577,25 +577,18 @@ async def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
     print("✅ Bot is live and running...")
-    await app.run_polling(close_loop=False)
-
+    await app.initialize()
+    await app.start()
+    await app.updater.start_polling()
+    await asyncio.Event().wait()  # keep the bot alive forever
 
 if __name__ == "__main__":
-    import asyncio
-
     try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-    try:
-        loop.create_task(main())
-        loop.run_forever()
-    except KeyboardInterrupt:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
         print("🛑 Bot stopped manually")
-    finally:
-        loop.close()
+
+
 
 
 
