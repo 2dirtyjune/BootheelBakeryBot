@@ -78,8 +78,10 @@ HELP_COOLDOWN = 24 * 60 * 60  # 24h cooldown for /requesthelp
 # ===== MENU =====
 MENU_STRUCTURE = {
     "🖊️": ["Turn", "Jeeter Juice", "Dabwoods", "Crybaby", "Buzzbar"],
-    "🍃": ["8-strain Mix n Match Light dep Smalls"],
+    "🍃": ["8-strain Mix n Match Light dep Smalls","BLDX19/LightDepSmalls","BLL/LightDepSmalls","Gush Mints/LightDepSmalls","Black Cherry Soda/LightDepBigs","Dosi x Gelato/LightDepBigs","Permanent Marker/LightDepBigs"],
+    "🍄": ["Bluie Vuitton"],
 }
+
 
 PRODUCT_IMAGES = {
     "Turn": "https://ibb.co/G4M71k9n",
@@ -87,16 +89,30 @@ PRODUCT_IMAGES = {
     "Dabwoods": "https://ibb.co/FkmqZ1d7",
     "Crybaby": "https://ibb.co/zhQdsVJF",
     "Buzzbar": "https://ibb.co/7tcTq6JJ",
-    "8-strain Mix n Match Light dep Smalls": "https://ibb.co/ZtZv3Yy"
+    "Bluie Vuitton": "https://ibb.co/fd3F9vd5",
+    "8-strain Mix n Match Light Dep Smalls": "https://ibb.co/ZtZv3Yy",
+    "BLDX19/LightDepSmalls": "https://ibb.co/BVpk3XVJ",
+    "BLL/LightDepSmalls": "https://ibb.co/gZckztQW",
+    "Gush Mints/LightDepSmalls": "https://ibb.co/sp31ySg8",
+    "Black Cherry Soda/LightDepBigs": "https://ibb.co/ZRHWP5Mj",
+    "Dosi x Gelato/LightDepBigs": "https://ibb.co/jk31DYN7",
+    "Permanent Marker/LightDepBigs": "https://ibb.co/ccWhVmg2",
 }
 
 PRODUCT_PRICES = {
-    "Turn": {"1x": 35, "25x": 350, "50x": 650, "100x": 1200},
-    "Jeeter Juice": {"1x": 35, "25x": 350, "50x": 650, "100x": 1200},
+    "Turn": {"1x": 35, "25x": 350, "50x": 500, "100x": 1000},
+    "Jeeter Juice": {"1x": 35, "25x": 350, "50x": 500, "100x": 1000},
     "Dabwoods": {"1x": 40, "50x": 700},
-    "Crybaby": {"1x": 35, "50x": 650, "100x": 1100},
-    "Buzzbar": {"1x": 35, "50x": 650},
-    "8-strain Mix n Match Light dep Smalls": {"1oz": 100, "1/4LB": 350, "1/2LB": 650, "1LB": 1000, "2LB": 1800, "5LB (Free One)": 4000}
+    "Crybaby": {"1x": 35, "50x": 500, "100x": 1000},
+    "Buzzbar": {"1x": 35, "50x": 600},
+    "8-strain Mix n Match Light Dep Smalls": {"1oz": 100, "1/4LB": 250, "1/2LB": 450, "1LB": 800, "2LB": 1600},
+    "BLDX19/LightDepSmalls": {"1oz": 100, "1/4LB": 250, "1/2LB": 450, "1LB": 800, "2LB": 1600},
+    "BLL/LightDepSmalls": {"1oz": 100, "1/4LB": 250, "1/2LB": 450, "1LB": 800, "2LB": 1600},
+    "Gush Mints/LightDepSmalls": {"1oz": 100, "1/4LB": 250, "1/2LB": 450, "1LB": 800, "2LB": 1600},
+    "Black Cherry Soda/LightDepBigs": {"1oz": 100, "1/4LB": 250, "1/2LB": 550, "1LB": 1000, "2LB": 2000},
+    "Dosi x Gelato/LightDepBigs": {"1oz": 100, "1/4LB": 250, "1/2LB": 550, "1LB": 1000, "2LB": 2000},
+    "Permanent Marker/LightDepBigs": {"1oz": 100, "1/4LB": 250, "1/2LB": 550, "1LB": 1000, "2LB": 2000},
+    "Bluie Vuitton": {"1oz": 100, "1/4LB": 300, "1/2LB": 550, "1LB": 800}
 }
 
 MENU_IMAGE_URL = "https://ibb.co/JRKtV7Vc"
@@ -587,6 +603,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
         print("🛑 Bot stopped manually")
+
 
 
 
