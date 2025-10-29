@@ -10,19 +10,20 @@ from telegram import (
     Update,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
-    InputMediaPhoto,
 )
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
     CallbackQueryHandler,
-    MessageHandler,
     ContextTypes,
     filters,
 )
 
 # ===== DATABASE CONFIG =====
-DB_URL = os.getenv("DATABASE_URL", "postgresql://neondb_owner:npg_HwxTk65vqgMW@ep-spring-water-ad4np5eb-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require")
+DB_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql://neondb_owner:npg_HwxTk65vqgMW@ep-spring-water-ad4np5eb-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require"
+)
 
 async def connect_db():
     pool = await asyncpg.create_pool(DB_URL)
@@ -58,15 +59,11 @@ except Exception:
     TZ_EST = None
 
 # ===== DATA =====
-ORDERS_LOG = []
-COMPLETED_ORDERS = []
-USER_STATS = {}
-KNOWN_USERS = set()
-PENDING_PAYMENTS = {}
-LAST_ORDER_BY_USER = {}
-USER_PROFILES = {}  # user_id -> {"joined": ts, "spent": float, "completed": int}
+ORDERS_LOG = []             # Pending orders
+COMPLETED_ORDERS = []       # Finished orders
+USER_PROFILES = {}          # user_id -> {"joined": ts, "spent": float, "completed": int}
 
-# ===== MENU =====
+# ===== MENU DATA =====
 MENU_STRUCTURE = {
     "🖊️": ["Turn", "Jeeter Juice", "Dabwoods", "Crybaby", "Buzzbar"],
     "🍃": ["8-strain Mix n Match Light dep Smalls"],
@@ -96,11 +93,10 @@ PRODUCT_PRICES = {
 MENU_IMAGE_URL = "https://ibb.co/JRKtV7Vc"
 CONFIRMATION_IMAGE_URL = "https://ibb.co/Y4tTxcHG"
 INSTRUCTIONS_IMAGE_URL = "https://ibb.co/PSZ5py2"
-FAQ_IMAGE_URL = "https://ibb.co/ZtZv3Yy"
-MUSTREAD_IMAGE_URL = "https://ibb.co/S7Z9DGfX"
 
 # ===== HELPERS =====
 def fmt_ts(ts: float) -> str:
+    """Format timestamp in readable EST/local time."""
     if TZ_EST:
         dt = datetime.fromtimestamp(ts, TZ_EST)
         return dt.strftime("%b %d, %Y – %I:%M %p %Z")
@@ -109,17 +105,12 @@ def fmt_ts(ts: float) -> str:
 def generate_order_id(length=6):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
-def est_today_date() -> date:
-    if TZ_EST:
-        return datetime.now(TZ_EST).date()
-    return datetime.now().date()
-
 async def _send_photo_or_link(message, url, caption, mode="Markdown", markup=None):
+    """Try to send an image; fallback to text with preview if fails."""
     try:
         return await message.reply_photo(photo=url, caption=caption, parse_mode=mode, reply_markup=markup)
-    except Exception as e:
-        log.warning(f"reply_photo failed for {url}: {e}")
-        return await message.reply_text(f"{caption}\n{url}", parse_mode=mode, reply_markup=markup, disable_web_page_preview=False)
+    except Exception:
+        return await message.reply_text(f"{caption}\n{url}", parse_mode=mode, reply_markup=markup)
 
 # ===== MENUS =====
 def build_main_menu(order_count=0):
@@ -131,20 +122,12 @@ def build_main_menu(order_count=0):
     keyboard.append([InlineKeyboardButton("👤 View Profile", callback_data="view_profile")])
     return InlineKeyboardMarkup(keyboard)
 
-def build_cart_menu():
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🗑️ Clear Cart", callback_data="clear_cart")],
-        [InlineKeyboardButton("⬅️ Back to Menu", callback_data="back")]
-    ])
-
 # ===== COMMANDS =====
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Start command — initialize user profile."""
     user = update.message.from_user
     if update.message.chat.type != "private":
         return
-    context.user_data["order"] = []
-    KNOWN_USERS.add(user.id)
-    USER_STATS[user.id] = USER_STATS.get(user.id, 0)
     if user.id not in USER_PROFILES:
         USER_PROFILES[user.id] = {"joined": time.time(), "spent": 0.0, "completed": 0}
     await _send_photo_or_link(
@@ -155,32 +138,54 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         build_main_menu()
     )
 
-# ===== PROFILE VIEW =====
-async def show_profile(update_or_query, user_id, back_to="back"):
+# ===== PROFILE =====
+async def show_profile(query, user_id):
+    """Display user profile with stats + view orders button."""
     profile = USER_PROFILES.get(user_id, {})
-    joined_ts = profile.get("joined", time.time())
-    joined_fmt = fmt_ts(joined_ts)
+    joined = fmt_ts(profile.get("joined", time.time()))
     spent = profile.get("spent", 0)
     completed = profile.get("completed", 0)
-
     text = (
         f"👤 *Your Profile*\n"
         f"──────────────────\n"
         f"🧾 Orders Completed: {completed}\n"
         f"💰 Total Spent: ${spent:.2f}\n"
-        f"📅 Member Since: {joined_fmt}\n"
+        f"📅 Member Since: {joined}\n"
     )
     markup = InlineKeyboardMarkup([
         [InlineKeyboardButton("📦 View Orders", callback_data="view_orders")],
-        [InlineKeyboardButton("⬅️ Back", callback_data=back_to)]
+        [InlineKeyboardButton("⬅️ Back", callback_data="back")]
     ])
-    if isinstance(update_or_query, Update):
-        await update_or_query.message.reply_text(text, parse_mode="Markdown", reply_markup=markup)
-    else:
-        await update_or_query.message.reply_text(text, parse_mode="Markdown", reply_markup=markup)
+    await query.message.reply_text(text, parse_mode="Markdown", reply_markup=markup)
 
-# ===== HANDLE SELECTION =====
+async def show_user_orders(query, user_id):
+    """Display all completed orders for a user."""
+    user_orders = [o for o in COMPLETED_ORDERS if o.get("user_id") == user_id]
+    if not user_orders:
+        await query.message.reply_text("📦 You have no completed orders yet.", reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("⬅️ Back", callback_data="view_profile")]
+        ]))
+        return
+
+    user_orders = sorted(user_orders, key=lambda o: o.get("completed_ts", 0), reverse=True)
+    lines = []
+    for o in user_orders:
+        lines.append(
+            f"──────────────\n"
+            f"🧾 *Order #{o['id']}*\n"
+            f"🕒 {fmt_ts(o.get('completed_ts', o.get('ts', time.time())))}\n"
+            f"💰 ${o['total']}\n"
+            f"🚚 Tracking: `{o.get('tracking', '—')}`\n"
+            f"{o['items']}"
+        )
+    text = "📦 *Your Completed Orders:*\n\n" + "\n\n".join(lines)
+    await query.message.reply_text(text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup([
+        [InlineKeyboardButton("⬅️ Back to Profile", callback_data="view_profile")]
+    ]))
+
+# ===== CALLBACK HANDLER =====
 async def handle_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle all inline button presses."""
     query = update.callback_query
     await query.answer()
     data = query.data
@@ -188,38 +193,14 @@ async def handle_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if data == "view_profile":
         await show_profile(query, user.id)
-        return
-
     elif data == "view_orders":
-        user_orders = [o for o in COMPLETED_ORDERS if o.get("user_id") == user.id]
-        if not user_orders:
-            await query.message.reply_text("📦 You have no completed orders yet.", reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("⬅️ Back", callback_data="view_profile")]
-            ]))
-            return
-
-        user_orders = sorted(user_orders, key=lambda o: o.get("completed_ts", 0), reverse=True)
-        parts = []
-        for o in user_orders:
-            parts.append(
-                f"──────────────\n"
-                f"🧾 *Order #{o['id']}*\n"
-                f"🕒 {fmt_ts(o.get('completed_ts', o.get('ts', time.time())))}\n"
-                f"💰 ${o['total']}\n"
-                f"🚚 Tracking: `{o.get('tracking', '—')}`\n"
-                f"{o['items']}"
-            )
-        full_text = "📦 *Your Completed Orders:*\n\n" + "\n\n".join(parts)
-        await query.message.reply_text(full_text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("⬅️ Back to Profile", callback_data="view_profile")]
-        ]))
-        return
-
+        await show_user_orders(query, user.id)
     elif data == "back":
         await query.message.reply_photo(MENU_IMAGE_URL, caption="👋 Choose a category:", reply_markup=build_main_menu())
 
-# ===== ADMIN SHIP =====
+# ===== ADMIN: SHIP ORDER =====
 async def ship_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Admin command: mark order as shipped."""
     if update.message.from_user.id != ADMIN_ID:
         return
     if len(context.args) < 2:
@@ -227,42 +208,41 @@ async def ship_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     user_id = int(context.args[0])
-    tracking_number = context.args[1]
+    tracking = context.args[1]
     order = next((o for o in ORDERS_LOG if o.get("user_id") == user_id), None)
     if not order:
         await update.message.reply_text("❌ No pending order found.")
         return
 
     ORDERS_LOG.remove(order)
-    order_completed_ts = time.time()
-    order_completed = dict(order)
-    order_completed["tracking"] = tracking_number
-    order_completed["completed_ts"] = order_completed_ts
-    COMPLETED_ORDERS.append(order_completed)
-    LAST_ORDER_BY_USER[user_id] = order_completed
+    order["tracking"] = tracking
+    order["completed_ts"] = time.time()
+    COMPLETED_ORDERS.append(order)
 
-    if user_id in USER_PROFILES:
-        USER_PROFILES[user_id]["completed"] += 1
-        USER_PROFILES[user_id]["spent"] += order_completed.get("total", 0)
-    else:
-        USER_PROFILES[user_id] = {"joined": time.time(), "completed": 1, "spent": order_completed.get("total", 0)}
+    # update profile stats
+    if user_id not in USER_PROFILES:
+        USER_PROFILES[user_id] = {"joined": time.time(), "spent": 0, "completed": 0}
+    USER_PROFILES[user_id]["completed"] += 1
+    USER_PROFILES[user_id]["spent"] += order.get("total", 0)
 
     await context.bot.send_message(
         user_id,
-        f"🚚 *Order complete!* Your tracking number is `{tracking_number}`.\nThank you for your order!",
+        f"🚚 *Order complete!* Your tracking number is `{tracking}`.\nThank you for your order!",
         parse_mode="Markdown"
     )
-    await update.message.reply_text(f"✅ Order #{order.get('id')} marked as shipped.")
+    await update.message.reply_text(f"✅ Order #{order['id']} marked as shipped and saved to profile.")
 
 # ===== MAIN LOOP =====
 if __name__ == "__main__":
     async def main():
         pool = await connect_db()
         await setup_tables(pool)
+
         app = ApplicationBuilder().token(BOT_TOKEN).build()
         app.add_handler(CommandHandler("start", start))
         app.add_handler(CommandHandler("ship", ship_order))
         app.add_handler(CallbackQueryHandler(handle_selection))
+
         print("✅ Bot running... Press Ctrl+C to stop.")
         await app.initialize()
         await app.start()
@@ -270,6 +250,7 @@ if __name__ == "__main__":
         await asyncio.Event().wait()
 
     asyncio.get_event_loop().run_until_complete(main())
+
 
 
 
