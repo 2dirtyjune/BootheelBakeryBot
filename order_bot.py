@@ -88,7 +88,7 @@ PRODUCT_IMAGES = {
     "Dabwoods": "https://ibb.co/FkmqZ1d7",
     "Crybaby": "https://ibb.co/zhQdsVJF",
     "Buzzbar": "https://ibb.co/7tcTq6JJ",
-    "8-strain Mix n Match Light dep Smalls": "https://ibb.co/ZtZv3Yy"
+    "8-strain Mix n Match Light dep Smalls": "https://ibb.co/ZtZv3Yy",
     "Bluie Vuitton": "https://ibb.co/fd3F9vd5"
 }
 
@@ -751,6 +751,7 @@ if __name__ == "__main__":
         await asyncio.Event().wait()  # keep it alive forever
 
     asyncio.get_event_loop().run_until_complete(main())
+
 
 
 
