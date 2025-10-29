@@ -577,12 +577,14 @@ async def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
     print("✅ Bot is live and running...")
-    await app.run_polling()
+    await app.run_polling(close_loop=False)
+
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         print("🛑 Bot stopped manually")
+
 
 
