@@ -664,6 +664,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         addr["return_number"] = text
 
 # ===== MAIN ENTRY POINT =====
+import asyncio
+
 async def main():
     pool = await connect_db()
     await setup_tables(pool)
@@ -685,20 +687,18 @@ async def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
     print("💤 Bot still running...")
-    # 👇 This is the key fix — tell PTB not to close the event loop
     await app.run_polling(close_loop=False)
 
 
 if __name__ == "__main__":
-    import asyncio
-
     try:
-        asyncio.get_running_loop()
+        # If there's already a loop running (Render or Jupyter environment)
+        loop = asyncio.get_running_loop()
+        loop.create_task(main())
+        loop.run_forever()
     except RuntimeError:
+        # Normal case for standard environments
         asyncio.run(main())
-    else:
-        # If a loop is already running (Render environment)
-        asyncio.ensure_future(main())
 
 
 
