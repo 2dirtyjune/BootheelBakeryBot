@@ -100,8 +100,8 @@ PRODUCT_IMAGES = {
 }
 
 PRODUCT_PRICES = {
-    "Turn": {"1x": 35, "25x": 350, "50x": 500, "100x": 1000},
-    "Jeeter Juice": {"1x": 35, "25x": 350, "50x": 500, "100x": 1000},
+    "Turn": {"1x": 35, "25x": 250, "50x": 500, "100x": 1000},
+    "Jeeter Juice": {"1x": 35, "25x": 250, "50x": 500, "100x": 1000},
     "Dabwoods": {"1x": 40, "50x": 700},
     "Crybaby": {"1x": 35, "50x": 500, "100x": 1000},
     "Buzzbar": {"1x": 35, "50x": 600},
@@ -603,6 +603,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
         print("🛑 Bot stopped manually")
+
 
 
 
