@@ -77,18 +77,19 @@ HELP_COOLDOWN = 24 * 60 * 60  # 24h cooldown for /requesthelp
 
 # ===== MENU =====
 MENU_STRUCTURE = {
-    "🖊️": ["Turn", "Jeeter Juice", "Dabwoods", "Crybaby", "Buzzbar"],
+    "🖊️": ["Turn 1G", "Jeeter Juice 1G", "Dabwoods 2G", "Crybaby 2G", "Buzzbar 2G", "MuhaMeds 2G"],
     "🍃": ["8-strain Mix n Match Light dep Smalls","BLDX19/LightDepSmalls","BLL/LightDepSmalls","Gush Mints/LightDepSmalls","Black Cherry Soda/LightDepBigs","Dosi x Gelato/LightDepBigs","Permanent Marker/LightDepBigs"],
     "🍄": ["Bluie Vuitton"],
 }
 
 
 PRODUCT_IMAGES = {
-    "Turn": "https://ibb.co/G4M71k9n",
-    "Jeeter Juice": "https://ibb.co/gBLBy9W",
-    "Dabwoods": "https://ibb.co/FkmqZ1d7",
-    "Crybaby": "https://ibb.co/zhQdsVJF",
-    "Buzzbar": "https://ibb.co/7tcTq6JJ",
+    "Turn 1G": "https://ibb.co/G4M71k9n",
+    "Jeeter Juice 1G": "https://ibb.co/gBLBy9W",
+    "Dabwoods 2G": "https://ibb.co/FkmqZ1d7",
+    "Crybaby 2G": "https://ibb.co/zhQdsVJF",
+    "Buzzbar 2G": "https://ibb.co/7tcTq6JJ",
+    "MuhaMeds 2G": "https://ibb.co/nN6j86Tn",
     "Bluie Vuitton": "https://ibb.co/fd3F9vd5",
     "8-strain Mix n Match Light Dep Smalls": "https://ibb.co/ZtZv3Yy",
     "BLDX19/LightDepSmalls": "https://ibb.co/BVpk3XVJ",
@@ -100,11 +101,12 @@ PRODUCT_IMAGES = {
 }
 
 PRODUCT_PRICES = {
-    "Turn": {"1x": 35, "25x": 250, "50x": 500, "100x": 1000},
-    "Jeeter Juice": {"1x": 35, "25x": 250, "50x": 500, "100x": 1000},
-    "Dabwoods": {"1x": 40, "50x": 700},
-    "Crybaby": {"1x": 35, "50x": 500, "100x": 1000},
-    "Buzzbar": {"1x": 35, "50x": 600},
+    "Turn 1G": {"1x": 35, "25x": 250, "50x": 500, "100x": 1000},
+    "Jeeter Juice 1G": {"1x": 35, "25x": 250, "50x": 500, "100x": 1000},
+    "Dabwoods 2G": {"1x": 40, "50x": 700},
+    "Crybaby 2G": {"1x": 35, "50x": 500, "100x": 1000},
+    "Buzzbar 2G": {"1x": 35, "50x": 600},
+    "MuhaMeds 2G": {"1x": 35, "25x": 350, "50x": 600, "100x": 1100},
     "8-strain Mix n Match Light Dep Smalls": {"1oz": 100, "1/4LB": 250, "1/2LB": 450, "1LB": 800, "2LB": 1600},
     "BLDX19/LightDepSmalls": {"1oz": 100, "1/4LB": 250, "1/2LB": 450, "1LB": 800, "2LB": 1600},
     "BLL/LightDepSmalls": {"1oz": 100, "1/4LB": 250, "1/2LB": 450, "1LB": 800, "2LB": 1600},
@@ -603,6 +605,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
         print("🛑 Bot stopped manually")
+
 
 
 
