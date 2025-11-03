@@ -78,7 +78,7 @@ HELP_COOLDOWN = 24 * 60 * 60  # 24h cooldown for /requesthelp
 # ===== MENU =====
 MENU_STRUCTURE = {
     "🖊️": ["Turn 1G", "Jeeter Juice 1G", "Dabwoods 2G", "Crybaby 2G", "Buzzbar 2G", "MuhaMeds 2G"],
-    "🍃": ["8-strain Mix n Match Light dep Smalls","BLDX19/LightDepSmalls","BLL/LightDepSmalls","Gush Mints/LightDepSmalls","Black Cherry Soda/LightDepBigs","Dosi x Gelato/LightDepBigs","Permanent Marker/LightDepBigs"],
+    "🍃": ["8-strain Mix n Match Light Dep Smalls","BLDX19/LightDepSmalls","BLL/LightDepSmalls","Gush Mints/LightDepSmalls","Black Cherry Soda/LightDepBigs","Dosi x Gelato/LightDepBigs","Permanent Marker/LightDepBigs"],
     "🍄": ["Bluie Vuitton"],
 }
 
@@ -569,10 +569,25 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         addr["full"] = text
         context.user_data["collecting_address"] = "return_number"
         await update.message.reply_text("📬 Please enter your *Return #*(BTC ADDRESS) (required):", parse_mode="Markdown")
-        await update.message.reply_text("📬 Please enter your *Return #* (BTC ADDRESS required):", parse_mode="Markdown")
 
     elif stage == "return_number":
-        addr["return_number"] = text
+          addr["return_number"] = text
+        context.user_data["collecting_address"] = None
+
+        pending = context.user_data.get("pending_order", {})
+        pending["user_id"] = user.id
+        pending["name"] = f"{addr.get('first_name','')} {addr.get('last_name','')}"
+        pending["address"] = addr
+        pending["ts"] = time.time()
+
+        ORDERS_LOG.append(pending)
+        PENDING_PAYMENTS[user.id] = pending["id"]
+
+        await update.message.reply_photo(
+            photo=CONFIRMATION_IMAGE_URL,
+            caption=f"✅ *Order #{pending['id']} Confirmed!*\n\n💰 Total: ${pending['total']}\n🕒 Placed: {fmt_ts(pending['ts'])}\n\nWe'll notify you when it’s processed.",
+            parse_mode="Markdown"
+        )
 
 # ===== MAIN ENTRY POINT =====
 import asyncio
@@ -605,6 +620,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
         print("🛑 Bot stopped manually")
+
 
 
 
